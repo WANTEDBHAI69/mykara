@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A Surprise For You</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #151928 0%, #080a10 100%);
+      color: #f0f2f5;
+      font-family: 'Montserrat', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Ambient Firefly Canvas */
+    canvas#skyCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* App Frame */
+    .app-frame {
+      position: relative;
+      z-index: 2;
+      width: 92%;
+      max-width: 620px;
+      margin: 40px auto;
+      perspective: 1000px;
+    }
+
+    /* Progress Dots */
+    .step-tracker {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: all 0.4s ease;
+    }
+
+    .step-dot.active {
+      background: #ffd166;
+      box-shadow: 0 0 12px #ffd166;
+      transform: scale(1.3);
+    }
+
+    /* Card Panels */
+    .panel {
+      display: none;
+      background: rgba(20, 26, 40, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 44px 30px;
+      text-align: center;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+      opacity: 0;
+      transform: translateY(20px) scale(0.97);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .panel.current {
+      display: block;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      letter-spacing: 0.2rem;
+      text-transform: uppercase;
+      color: #ffd166;
+      padding: 6px 16px;
+      background: rgba(255, 209, 102, 0.1);
+      border: 1px solid rgba(255, 209, 102, 0.25);
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 16px;
+      line-height: 1.25;
+    }
+
+    p.description {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #9aa5b5;
+      margin-bottom: 30px;
+    }
+
+    /* Action Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #ffd166, #ff9f1c);
+      color: #0b0e14;
+      border: none;
+      padding: 14px 34px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.08rem;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(255, 159, 28, 0.3);
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 12px 30px rgba(255, 159, 28, 0.5);
+    }
+
+    /* Interactive Props in Layers */
+    .gift-box-icon {
+      font-size: 3.5rem;
+      margin-bottom: 16px;
+      display: inline-block;
+      cursor: pointer;
+      filter: drop-shadow(0 0 15px rgba(255, 209, 102, 0.4));
+      animation: pulseBox 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseBox {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .countdown-box {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .stat-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 14px 18px;
+      border-radius: 12px;
+      min-width: 90px;
+    }
+
+    .stat-pill .number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      color: #ffd166;
+      font-weight: 600;
+    }
+
+    .stat-pill .label {
+      font-size: 0.7rem;
+      letter-spacing: 0.1rem;
+      text-transform: uppercase;
+      color: #8c97a8;
+      margin-top: 4px;
+    }
+
+    .lock-wrapper {
+      margin-bottom: 24px;
+    }
+
+    .key-btn {
+      background: transparent;
+      border: 2px dashed rgba(255, 209, 102, 0.5);
+      color: #ffd166;
+      padding: 18px 26px;
+      border-radius: 50%;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .key-btn:hover {
+      background: rgba(255, 209, 102, 0.15);
+      border-style: solid;
+      transform: rotate(45deg) scale(1.1);
+    }
+
+    /* Poem Presentation (Final Layer) */
+    .poem-container {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin: 20px 0;
+    }
+
+    .poem-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .poem-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 209, 102, 0.3);
+      border-radius: 4px;
+    }
+
+    .stanza {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem;
+      line-height: 1.85;
+      color: #f7f9fb;
+      margin-bottom: 22px;
+      font-style: italic;
+    }
+
+    .stanza:last-child {
+      margin-bottom: 0;
+    }
+
+    .anniversary-badge {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.25rem;
+      text-transform: uppercase;
+      color: #ffd166;
+      margin-top: 25px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="skyCanvas"></canvas>
+
+  <div class="app-frame">
+    <!-- Progress Indicator -->
+    <div class="step-tracker">
+      <div class="step-dot active" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+      <div class="step-dot" id="dot3"></div>
+      <div class="step-dot" id="dot4"></div>
+    </div>
+
+    <!-- LAYER 1: The Surprise Delivery (Teaser) -->
+    <div class="panel current" id="panel1">
+      <div class="gift-box-icon" onclick="nextPanel(2)">🎁</div>
+      <span class="badge">Special Delivery</span>
+      <h2>A Parcel Has Arrived</h2>
+      <p class="description">
+        I have put together a small surprise just for you to mark our anniversary. It's locked tight and requires you to unpack it step-by-step.
+      </p>
+      <button class="btn" onclick="nextPanel(2)">Open Parcel</button>
+    </div>
+
+    <!-- LAYER 2: The Journey & Milestones (Curiosity) -->
+    <div class="panel" id="panel2">
+      <span class="badge">Milestone Memory</span>
+      <h2>Another Year Along The Way</h2>
+      <p class="description">
+        Through every random laugh, long video calls, and quiet moment together—here is to everything we've shared so far.
+      </p>
+      
+      <div class="countdown-box">
+        <div class="stat-pill">
+          <div class="number">1095+</div>
+          <div class="label">Days</div>
+        </div>
+        <div class="stat-pill">
+          <div class="number">∞</div>
+          <div class="label">Memories</div>
+        </div>
+        <div class="stat-pill">
+          <div class="number">1</div>
+          <div class="label">Only You</div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="nextPanel(3)">Proceed To The Box</button>
+    </div>
+
+    <!-- LAYER 3: The Secret Vault (Suspense) -->
+    <div class="panel" id="panel3">
+      <span class="badge">The Hidden Keepsake</span>
+      <h2>The Safe Is Locked</h2>
+      <p class="description">
+        Inside lies something crafted specifically for this night. Tap the golden key to break the seal and see what was written for you.
+      </p>
+      <div class="lock-wrapper">
+        <button class="key-btn" onclick="nextPanel(4)" title="Click to unlock">🗝️</button>
+      </div>
+      <p style="font-size: 0.8rem; color: #7e8b9b;">Click the key to unlock the surprise</p>
+    </div>
+
+    <!-- LAYER 4: The Grand Reveal (Poem Unveiled) -->
+    <div class="panel" id="panel4">
+      <span class="badge">Happy Anniversary My Wifey</span>
+      <h2>For My Kara</h2>
+      
+      <div class="poem-container">
+        <div class="stanza">
+          From early dawn until the dying light,<br>
+          I want you in each shadowed, half-moon night.
+        </div>
+        <div class="stanza">
+          Beside the quiet river, beneath the tree,<br>
+          You shiver in the cold and turn to me.
+        </div>
+        <div class="stanza">
+          And as the midnight air begins to freeze,<br>
+          You rest your head upon my shoulder, pleased.
+        </div>
+        <div class="stanza">
+          I wrap you closely in a warm embrace,<br>
+          Stealing the chill away without a trace.
+        </div>
+        <div class="stanza">
+          Our fingers tangle as the hours pass,<br>
+          While fireflies drift softly through the grass.
+        </div>
+        <div class="stanza">
+          But we see nothing of the glowing skies—<br>
+          Lost entirely in each other's eyes.
+        </div>
+        <div class="stanza">
+          No bitter words, no playful fights or tease,<br>
+          Just silent stars and uninterrupted peace.
+        </div>
+        <div class="stanza">
+          Reading these lines, we know we’re soulmates tied—<br>
+          Just counting down the days until we’re side by side.
+        </div>
+      </div>
+
+      <span class="anniversary-badge">Forever & Always , your hubishi</span>
+    </div>
+  </div>
+
+  <script>
+    // Panel Transition Controller
+    function nextPanel(stepNumber) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('current'));
+      document.querySelectorAll('.step-dot').forEach((dot, idx) => {
+        if (idx < stepNumber) {
+          dot.classList.add('active');
+        } else {
+          dot.classList.remove('active');
+        }
+      });
+
+      const next = document.getElementById('panel' + stepNumber);
+      if (next) {
+        next.classList.add('current');
+      }
+
+      // Final celebration sparks if reaching poem
+      if (stepNumber === 4) {
+        triggerConfettiFireflies();
+      }
+    }
+
+    // Canvas Background: Gentle Fireflies
+    const canvas = document.getElementById('skyCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Firefly {
+      constructor(burst = false) {
+        this.reset(burst);
+      }
+
+      reset(burst = false) {
+        this.x = burst ? width / 2 : Math.random() * width;
+        this.y = burst ? height / 2 : Math.random() * height;
+        this.vx = burst ? (Math.random() - 0.5) * 5 : (Math.random() - 0.5) * 0.4;
+        this.vy = burst ? (Math.random() - 0.5) * 5 : (Math.random() - 0.5) * 0.4;
+        this.radius = Math.random() * 2 + 1;
+        this.alpha = burst ? 1 : Math.random() * 0.7 + 0.2;
+        this.decay = burst ? Math.random() * 0.01 + 0.005 : 0;
+        this.pulse = Math.random() * 0.02 + 0.005;
+        this.dir = 1;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.decay > 0) {
+          this.alpha -= this.decay;
+          if (this.alpha <= 0) this.reset(false);
+        } else {
+          this.alpha += this.pulse * this.dir;
+          if (this.alpha >= 0.9 || this.alpha <= 0.15) this.dir *= -1;
+        }
+
+        if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+          this.reset(false);
+        }
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 209, 102, ${Math.max(0, this.alpha)})`;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffd166';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    for (let i = 0; i < 50; i++) {
+      particles.push(new Firefly());
+    }
+
+    function triggerConfettiFireflies() {
+      for (let i = 0; i < 40; i++) {
+        particles.push(new Firefly(true));
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
